@@ -1,0 +1,33 @@
+
+
+model {
+
+## Each accuracy score has a chance of being correct
+
+for(i in 1:Ntrial){
+
+y[i] ~ dbern(theta[i])
+
+## The value of the binominal parameter is a logit transform of the regression using the ratio's as wieghts. Each participant has a seperate error term beta0
+
+logit(theta[i]) = beta0[pp[i]] + betaN*Nratio[i] + betaCH*CHratio[i] + betaDensity*Densityratio[i] + betaSurface*Surfaceratio[i] + betaItemsize*Itemsizeratio[i] + betaCircumfrence*Circumfrenceratio[i]
+  }
+
+
+## Priors
+
+for(q in 1:Nsub){
+beta0[q] ~ dnorm(0, 1/sigma^2)
+}
+
+
+betaN ~ dnorm(0, 1/sigma^2)
+betaCH ~ dnorm(0, 1/sigma^2)
+betaDensity ~ dnorm(0, 1/sigma^2)
+betaSurface ~ dnorm(0, 1/sigma^2)
+betaItemsize ~ dnorm(0, 1/sigma^2)
+betaCircumfrence ~ dnorm(0, 1/sigma^2)
+
+sigma ~ dunif( 1.0E-3 , 1.0E+3 )
+}
+

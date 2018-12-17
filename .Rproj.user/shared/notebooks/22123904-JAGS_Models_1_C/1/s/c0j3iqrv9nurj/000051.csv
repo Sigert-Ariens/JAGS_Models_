@@ -1,0 +1,11 @@
+"0","mcmc.c <- as.mcmc.list(out.model.1.C)
+pdf('traceplot_model_1_C.pdf')
+traceplot(mcmc.c) 
+dev.off()
+"
+"1","null device "
+"1","
+"
+"1","          1 "
+"1","
+"

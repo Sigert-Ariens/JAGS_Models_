@@ -1,0 +1,9 @@
+"0","for(i in 1:nrow(data)){
+  if(is.element(data$Congruence[i], c(1)) == TRUE){
+    Alldata.C[i,] <- data[i,]
+  }
+}
+"
+"2","Error in Alldata.C[i, ] <- data[i, ] : 
+  incorrect number of subscripts on matrix
+"

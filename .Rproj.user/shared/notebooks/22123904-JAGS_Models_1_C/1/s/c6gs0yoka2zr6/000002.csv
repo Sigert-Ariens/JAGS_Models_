@@ -1,0 +1,5 @@
+"0","nchains = 2"
+"0","nadapt = 1000 #many uninformative dispersion parameters"
+"0","nburn = 800"
+"0","niter = 10000"
+"0","myinits <- NULL"

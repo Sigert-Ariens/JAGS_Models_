@@ -1,0 +1,113 @@
+---
+title: "JAGS_Models_1_IC"
+author: "Sigert Ariens"
+date: "17 december 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+list.of.packages <- c("knitr","rjags","runjags", "psych", "ggplot2", "coda", "papaja","robustHD")
+new.packages <- list.of.packages[!(list.of.packages %in%installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages,repos = "http://cran.us.r-project.org")}
+lapply(list.of.packages, require, character.only = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r Importing Data}
+
+data <- read.delim(file = 'First Sample Data.csv', sep = ",", header = TRUE)
+varnames <- c("Subject", "Acc", "RT", "Congruence", "Nratio", "ImageIndex", "CHratio", "ItemSizeRatio", "CircumfrenceRatio", "Densityratio", "Surfaceratio")
+colnames(data) <- varnames
+```
+
+```{r Data for congruent stimuli}
+data.ic <- matrix(nrow = nrow(data), ncol = ncol(data))
+
+for(i in 1:nrow(data.ic)){
+  if(is.element(data$Congruence[i], c(0)) == TRUE){
+    data.ic[i,] <- as.matrix(data[i,])
+  }
+}
+
+data.ic <- na.omit(data.ic)
+data.ic <- as.data.frame(data.ic)
+colnames(data.ic) <- varnames
+```
+
+```{r Data List JAGS}
+DataList.1.IC = list(
+  y = data.c$Acc,
+  pp = data.c$Subject,
+  Nsub = 36,
+  Nratio = data.c$Nratio,
+  CHratio = data.c$CHratio,
+  Densityratio = data.c$Densityratio,
+  Surfaceratio = data.c$Surfaceratio,
+  Itemsizeratio = data.c$ItemSizeRatio,
+  Circumfrenceratio = data.c$CircumfrenceRatio,
+  Ntrial = nrow(data.c)
+)
+
+```
+```{r JAGS running specs}
+nchains = 2
+nadapt = 1000 #many uninformative dispersion parameters
+nburn = 1000
+niter = 10000
+myinits <- NULL
+```
+```{r JAGS model specification}
+ModelString = "
+
+model {
+
+## Each accuracy score has a chance of being correct
+
+for(i in 1:Ntrial){
+
+y[i] ~ dbern(theta[i])
+
+## The value of the binominal parameter is a logit transform of the regression using the ratio's as wieghts. Each participant has a seperate error term beta0
+
+logit(theta[i]) = beta0[pp[i]] + betaN*Nratio[i] + betaCH*CHratio[i] + betaDensity*Densityratio[i] + betaSurface*Surfaceratio[i] + betaItemsize*Itemsizeratio[i] + betaCircumfrence*Circumfrenceratio[i]
+  }
+
+
+## Priors
+
+for(q in 1:Nsub){
+beta0[q] ~ dnorm(0, 1/sigma^2)
+}
+
+
+betaN ~ dnorm(0, 1/sigma^2)
+betaCH ~ dnorm(0, 1/sigma^2)
+betaDensity ~ dnorm(0, 1/sigma^2)
+betaSurface ~ dnorm(0, 1/sigma^2)
+betaItemsize ~ dnorm(0, 1/sigma^2)
+betaCircumfrence ~ dnorm(0, 1/sigma^2)
+
+sigma ~ dunif( 1.0E-3 , 1.0E+3 )
+}
+"
+writeLines(ModelString , con="Model_1_IC")
+
+```
+
+```{r Running Jags}
+parameters<- c("betaN", "betaCH","betaDensity", "betaSurface", "betaItemsize", "betaCircumfrence")
+
+out.model.1.IC <- run.jags(model = "Model_1_IC", monitor = parameters, data = DataList.1.IC, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter,method = "parallel")#, thin = 1)
+
+autocorr.plot(as.mcmc.list(out.model.1.IC), xlim = c(0,100))
+write.table(summary(out.model.1.IC), file = "parameters_model_1_IC.csv", sep = ',')
+write.table(effectiveSize(out.model.1.IC), file = "ESS_model_1_IC.csv", sep = ',')
+
+mcmc.ic <- as.mcmc.list(out.model.1.IC)
+pdf('traceplot_model_1_IC.pdf')
+traceplot(mcmc.ic) 
+dev.off()
+```

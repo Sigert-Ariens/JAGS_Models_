@@ -1,0 +1,821 @@
+---
+title: "Followup_Stimuli_Description"
+author: "Sigert Ariens"
+date: "5 december 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+opts_knit$set(root.dir = 'C:/AA Uni Work/Stage/Followup/backup/afbeeldingen')
+
+list.of.packages <- c("knitr","rjags","runjags", "psych", "ggplot2", "coda", "papaja","robustHD")
+new.packages <- list.of.packages[!(list.of.packages %in%installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages,repos = "http://cran.us.r-project.org")}
+lapply(list.of.packages, require, character.only = TRUE)
+
+options(scipen = 999)
+options(stringsAsFactors = FALSE)
+
+
+```
+
+```{r Import data}
+
+data <- read.delim(file = 'Stimulus_Data_Followup_Backup.csv', sep = ',', header = FALSE)
+colnames(data) <- c("Image", "N", "Nratio", "CH", "Density", "Dot Surface Area", "Diameter", "Circumfrence of each dot", "Pair number", "Condition")
+data <- as.data.frame(data)
+
+Fullcong <- c(1,8)
+Fullincong <- c(2,7)
+CHcong <- c(3,6)
+Dotsizecong <- c(4,5)
+
+# Recoding Congruence Conditions
+for(i in 1:nrow(data)){
+  if( is.element(data$Condition[i], Fullcong) == TRUE ){
+    data$Condition[i] <- 1
+  }
+  if( is.element(data$Condition[i], Fullincong) == TRUE ){
+    data$Condition[i] <- 0
+  }
+  if( is.element(data$Condition[i], CHcong) == TRUE ){
+    data$Condition[i] <- 2
+  }
+  if( is.element(data$Condition[i], Dotsizecong) == TRUE ){
+    data$Condition[i] <- 3
+  }
+}
+
+# Calculating Ratio's
+data <- cbind(data, matrix(nrow = nrow(data), ncol = 5))
+ph <- 1
+for(i in 1:nrow(data)){
+  
+  if(ph == 575){
+    i = nrow(data)
+  }
+  
+  data[ph,11] <- data[ph+1,4]/data[ph,4]
+  data[ph+1,11] <- data[ph,11]
+  data[ph,12] <- data[ph+1,5]/data[ph,5]
+  data[ph+1,12] <- data[ph,12]
+  data[ph,13] <- data[ph+1,6]/data[ph,6]
+  data[ph+1,13] <- data[ph,13]
+  data[ph,14] <- data[ph+1,7]/data[ph,7]
+  data[ph+1,14] <- data[ph,14]
+  data[ph,15] <- data[ph+1,8]/data[ph,8]
+  data[ph+1,15] <- data[ph,15]
+  ph <- ph+2
+}
+
+data <- data[-c(577:nrow(data)),]
+for( i in 1:nrow(data)){
+  data$Nratio[i] <- data$Nratio[i]+1
+}
+
+# Recoding inverse ratio's
+
+for( i in 1:nrow(data)){
+  if(data[i,11] < 1 ){
+    data[i,11] <- 1/data[i,11]
+  }
+  if(data[i,12] < 1 ){
+    data[i,12] <- 1/data[i,12]
+  }
+  if(data[i,13] < 1 ){
+    data[i,13] <- 1/data[i,13]
+  }
+  if(data[i,14] < 1 ){
+    data[i,14] <- 1/data[i,14]
+  }
+  if(data[i,15] < 1 ){
+    data[i,15] <- 1/data[i,15]
+  }
+}
+
+
+```
+
+```{r Splitting per condition}
+
+data.fullcong <- split(data, data$Condition == 1)
+data.fullcong <- data.fullcong[[2]]
+
+data.fullincong <- split(data, data$Condition == 0)
+data.fullincong <- data.fullincong[[2]]
+
+data.CHcong <- split(data, data$Condition == 2)
+data.CHcong <- data.CHcong[[2]]
+
+data.Dotcong <- split(data, data$Condition == 3)
+data.Dotcong <- data.Dotcong[[2]]
+
+```
+
+```{r Ranges per condition}
+
+Range.matrix <- matrix(nrow = 6, ncol = 4)
+column.names <- c("Fully Congruent", "Fully Incongruent", "CH Congruent", "Dotsize Congruent")
+row.names.n <- c("Number", "CH", "Density", "Dot Surface Area", "Diameter", "Circumfrence of all dots")
+rownames(Range.matrix) <- row.names.n
+colnames(Range.matrix) <- column.names
+
+
+fullist <- c('data.fullcong', 'data.fullincong', 'data.CHcong', 'data.Dotcong')
+
+for(i in 1:4){
+  for(j in 1:5){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    Range.matrix[j+1,i] <- toString(range(Currenti[,j+10]))
+  }
+}
+
+for(i in 1:4){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    Range.matrix[1,i] <- toString(range(Currenti[,3]))
+
+}
+
+```
+
+```{r Mean per condition}
+Mean.matrix <- matrix(nrow = 6, ncol = 4)
+rownames(Mean.matrix) <- row.names.n
+colnames(Mean.matrix) <- column.names
+
+for(i in 1:4){
+  for(j in 1:5){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    Mean.matrix[j+1,i] <- mean(Currenti[,j+10])
+  }
+}
+
+for(i in 1:4){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    Mean.matrix[1,i] <- mean(Currenti[,3])
+}
+
+```
+
+```{r SDs per condition}
+SD.matrix <- matrix(nrow = 6, ncol = 4)
+rownames(SD.matrix) <- row.names.n
+colnames(SD.matrix) <- column.names
+
+for(i in 1:4){
+  for(j in 1:5){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    SD.matrix[j+1,i] <- sd(Currenti[,j+10])
+  }
+}
+
+for(i in 1:4){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    SD.matrix[1,i] <- sd(Currenti[,3])
+}
+```
+
+```{r Importing Newdata}
+
+setwd(dir = 'C:/AA Uni Work/Stage/Followup/Data')
+nsub <- 36
+subject <- c()
+acc <- c()
+acc.t <- c()
+rt <- c()
+rt.t <- c()
+congruence <- c()
+congruence.t <- c()
+ratio <- c()
+ratio.t <- c()
+ImageIndex.t <- c()
+ImageIndex <- c()
+Alldata <- matrix(nrow = 1, ncol = 6)
+
+ph <- 1
+ph2 <- 1
+ph3 <- 1
+ph4 <- 1
+ph5 <- 1
+
+for(i in 1:nsub){
+  data.tmp <- read.delim(file = paste('DOTTASKFINAL-',i,'-1.txt', sep = ""), sep = "\n", header = FALSE, fileEncoding="UTF-16LE")
+  subject <- i
+  
+  for(m in 210:nrow(data.tmp)){ ### 216 WORKED FOR THE REST
+    if(grepl("\tDataCollector.ACC: ", data.tmp[m,1], fixed = TRUE) == TRUE){
+      acc.t[ph] <- as.matrix(data.tmp[m,1])
+      acc[ph] <- gsub("\tDataCollector.ACC: ", "", acc.t[ph])
+      ph <- ph+1
+    }
+    if(grepl("\tDataCollector.RT: ",data.tmp[m,1], fixed = TRUE) == TRUE){
+      rt.t[ph2] <- as.matrix(data.tmp[m,1])
+      rt[ph2] <- as.numeric(gsub("\tDataCollector.RT: ", "",rt.t[ph2]))
+      ph2 <- ph2+1
+    }
+    if(grepl("\ttrialtype: ",data.tmp[m,1], fixed = TRUE) == TRUE){
+      congruence.t[ph3] <- as.matrix(data.tmp[m,1])
+      congruence[ph3] <- gsub("\ttrialtype: ", "",congruence.t[ph3])
+      ph3 <- ph3+1
+    }
+    if(grepl("\tRatio: ", data.tmp[m,1], fixed = TRUE) == TRUE){
+      ratio.t[ph4] <- as.matrix(data.tmp[m,1])
+      ratio[ph4] <- gsub("\tRatio: ", "", ratio.t[ph4])
+      ph4 <- ph4+1
+    }
+    if(grepl("\tS1: ", data.tmp[m,1], fixed = TRUE) == TRUE){
+      ImageIndex.t[ph5] <- as.matrix(data.tmp[m,1])
+      ImageIndex[ph5] <- gsub("\tS1: ", "", ImageIndex.t[ph5])
+      ph5 <- ph5 +1
+    }
+    }
+  if( i > 11){
+  data.matrix <- matrix(nrow = 283, ncol = 6)
+  data.matrix[,1] <- subject
+  data.matrix[,4] <- congruence
+  data.matrix[,2] <- acc[-c(1)]
+  data.matrix[,3] <- rt[-c(1)]
+  data.matrix[,5] <- ratio
+  data.matrix[,6] <- ImageIndex
+  }
+  else{
+  data.matrix <- matrix(nrow = 283, ncol = 6)
+  data.matrix[,1] <- subject
+  data.matrix[,4] <- congruence
+  data.matrix[,2] <- acc
+  data.matrix[,3] <- rt
+  data.matrix[,5] <- ratio
+  data.matrix[,6] <- ImageIndex
+  }
+ # In one training trial the data is accidentally held, so this gets rid of it
+  ph <- 1
+  ph2 <- 1
+  ph3 <- 1
+  ph4 <- 1
+  ph5 <- 1
+  setwd('C:/AA Uni Work/Stage/Followup/Data/Data Processed')
+  write.table(file = paste('Dottask-',i,'.csv', sep = ""), data.matrix, sep = ",", row.names = FALSE, quote = FALSE)
+  setwd('C:/AA Uni Work/Stage/Followup/Data')
+  Alldata <- rbind(Alldata,data.matrix)
+  
+}
+Alldata <- Alldata[-c(1),]
+Alldata.backup <- Alldata
+
+
+```
+
+```{r Recover Image Order for Regression}
+## Equating to pair number
+
+for(i in 1:nrow(Alldata)){
+  Alldata[i,6] <- substr(Alldata[i,6], 1, 3)
+  if(grepl( "_", Alldata[i,6], fixed = TRUE) == TRUE){
+    Alldata[i,6] <- substr(Alldata[i,6], 1, 2)
+    if(grepl("_", Alldata[i,6], fixed = TRUE) == TRUE){
+      Alldata[i,6] <- substr(Alldata[i,6],1,1)
+    }
+  }
+}
+
+Alldata[,6] <- as.numeric(Alldata[,6])
+data[,9] <- as.numeric(data[,9])
+```
+
+```{r Recode condition to condition groups and merge the ratio data}
+
+for(i in 1:nrow(Alldata)){
+  if(is.element(Alldata[i,4], Fullcong) == TRUE){
+    Alldata[i,4] <- 1
+  }else{
+  if(is.element(Alldata[i,4], Fullincong) == TRUE){
+    Alldata[i,4] <- 0
+  }else{
+  if(is.element(Alldata[i,4], CHcong) == TRUE){
+    Alldata[i,4] <- 2
+  }else{
+  if(is.element(Alldata[i,4], Dotsizecong) == TRUE){
+    Alldata[i,4] <- 3
+  }}}}}
+
+Alldata.backup <- Alldata
+
+## Only look at fully cong and fully incong for comparison with other sample
+
+## Inserting ratio data
+
+Alldata <- cbind(Alldata, matrix(nrow = nrow(Alldata), ncol = 5))
+
+for(i in 1:nrow(Alldata)){
+  for(j in 1:nrow(data)){
+    if( Alldata[i,6] == data[j,9]){
+      Alldata[i,7:11] <- as.matrix(data[j,11:15])
+    }
+}
+}
+
+
+
+Alldata.final <- matrix(nrow = nrow(Alldata), ncol = ncol(Alldata))
+
+for(i in 1:nrow(Alldata)){
+  if(is.element(Alldata[i,4], c(0,1))){
+    Alldata.final[i,] <- Alldata[i,]
+  }
+}
+Alldata.final <- na.omit(Alldata.final)
+
+Alldata.final[,5] <- as.numeric(Alldata.final[,5])+1
+
+write.table(file = "First Sample Data.csv", Alldata.final, sep = ",")
+
+
+```
+
+
+```{r Restructuring Y}
+y <- as.numeric(Alldata[,2])
+pp <- as.numeric(Alldata[,1])
+Nratio <- as.numeric(Alldata[,5])
+CHratio <- as.numeric(Alldata[,7])
+Densityratio <- as.numeric(Alldata[,10])
+Surfaceratio <- as.numeric(Alldata[,11])
+Itemsizeratio <- as.numeric(Alldata[,8])
+Circumfrenceratio <- as.numeric(Alldata[,9])
+Congruence <- as.factor(Alldata[,4])
+
+```
+
+
+```{r JAGS peperation}
+DataList = list(
+  y = as.numeric(y),
+  pp = as.numeric(pp),
+  Nsub = 36,
+  Nratio = as.numeric(Nratio),
+  CHratio = as.numeric(CHratio),
+  Densityratio = as.numeric(Densityratio),
+  Surfaceratio = as.numeric(Surfaceratio),
+  Itemsizeratio = as.numeric(Itemsizeratio),
+  Circumfrenceratio = as.numeric(Circumfrenceratio),
+  Ntrial = nrow(Alldata),
+  Congruence = as.factor(Congruence)
+)
+
+```
+```{r Jags Running specifications}
+nchains = 2
+nadapt = 1000 #many uninformative dispersion parameters
+nburn = 300
+niter = 2000
+myinits <- NULL
+
+```
+
+
+```{r JAGS model specification}
+ModelString = "
+
+model {
+
+## Each accuracy score has a chance of being correct, which is binominally distributed JUST DONT USE PPS AND ITS FINE
+
+for(i in 1:Ntrial){
+
+y[i] ~ dbinom(theta[i], 1)
+
+## The value of the binominal parameter is a logit transform of the regression using the ratio's as wieghts. Each participant has a seperate error term beta0
+
+logit(theta[i]) = beta0[pp[i]] + betaN*Nratio[i] + betaCH*CHratio[i] + betaDensity*Densityratio[i] + betaSurface*Surfaceratio[i] + betaItemsize*Itemsizeratio[i] + betaCircumfrence*Circumfrenceratio[i] + betacong*Congruence[i]
+
+  }
+
+
+## Priors
+
+for(q in 1:Nsub){
+beta0[q] ~ dnorm(0, 1/sigma^2)
+}
+
+
+betaN ~ dnorm(0, 1/sigma^2)
+betaCH ~ dnorm(0, 1/sigma^2)
+betaDensity ~ dnorm(0, 1/sigma^2)
+betaSurface ~ dnorm(0, 1/sigma^2)
+betaItemsize ~ dnorm(0, 1/sigma^2)
+betaCircumfrence ~ dnorm(0, 1/sigma^2)
+betacong ~ dnorm(0, 1/sigma^2)
+
+sigma ~ dunif( 1.0E-3 , 1.0E+3 )
+}
+"
+writeLines(ModelString , con="Model_Followup")
+
+```
+
+
+```{r Runnning Jags for Total, cache = TRUE}
+parameters <- c("betaN", "betaCH","betaDensity", "betaSurface", "betaItemsize", "betaCircumfrence", "betacong")
+parameters_cong <- c("betaN", "betaCH","betaDensity", "betaSurface", "betaItemsize", "betaCircumfrence")
+
+out.model <- run.jags(model = "Model_Followup", monitor = parameters, data = DataList, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter, thin = 15)
+
+outcoda <- as.mcmc.list(out.model)
+
+summary(outcoda)
+
+autocorr.plot(outcoda)
+summary(out.model)
+
+parameter.ests <- as.matrix(out.model$mcmc)
+
+```
+
+```{r Datalist IC}
+
+Alldata.IC <- matrix(nrow = nrow(Alldata), ncol = ncol(Alldata))
+
+for(i in 1:nrow(Alldata)){
+  if(is.element(Alldata[i,4], c(0))){
+    Alldata.IC[i,] <- Alldata[i,]
+  }
+}
+
+Alldata.IC <- na.omit(Alldata.IC)
+
+y <- as.numeric(Alldata.IC[,2])
+pp <- as.numeric(Alldata.IC[,1])
+Nratio <- as.numeric(Alldata.IC[,5])
+CHratio <- as.numeric(Alldata.IC[,7])
+Densityratio <- as.numeric(Alldata.IC[,10])
+Surfaceratio <- as.numeric(Alldata.IC[,11])
+Itemsizeratio <- as.numeric(Alldata.IC[,8])
+Circumfrenceratio <- as.numeric(Alldata.IC[,9])
+Congruence <- as.factor(Alldata.IC[,4])
+
+DataList_IC = list(
+  y = as.numeric(y),
+  pp = as.numeric(pp),
+  Nsub = 36,
+  Nratio = as.numeric(Nratio),
+  CHratio = as.numeric(CHratio),
+  Densityratio = as.numeric(Densityratio),
+  Surfaceratio = as.numeric(Surfaceratio),
+  Itemsizeratio = as.numeric(Itemsizeratio),
+  Circumfrenceratio = as.numeric(Circumfrenceratio),
+  Ntrial = nrow(Alldata.IC)
+)
+```
+```{r JAGS model specification seperate congruence}
+ModelString = "
+
+model {
+
+## Each accuracy score has a chance of being correct, which is binominally distributed JUST DONT USE PPS AND ITS FINE
+
+for(i in 1:Ntrial){
+
+y[i] ~ dbinom(theta[i], 1)
+
+## The value of the binominal parameter is a logit transform of the regression using the ratio's as wieghts. Each participant has a seperate error term beta0
+
+logit(theta[i]) = beta0[pp[i]] + betaN*Nratio[i] + betaCH*CHratio[i] + betaDensity*Densityratio[i] + betaSurface*Surfaceratio[i] + betaItemsize*Itemsizeratio[i] + betaCircumfrence*Circumfrenceratio[i]
+
+  }
+
+
+## Priors
+
+for(q in 1:Nsub){
+beta0[q] ~ dnorm(0, 1/sigma^2)
+}
+
+
+betaN ~ dnorm(0, 1/sigma^2)
+betaCH ~ dnorm(0, 1/sigma^2)
+betaDensity ~ dnorm(0, 1/sigma^2)
+betaSurface ~ dnorm(0, 1/sigma^2)
+betaItemsize ~ dnorm(0, 1/sigma^2)
+betaCircumfrence ~ dnorm(0, 1/sigma^2)
+betacong ~ dnorm(0, 1/sigma^2)
+
+sigma ~ dunif( 1.0E-3 , 1.0E+3 )
+}
+"
+writeLines(ModelString , con="Model_Followup_Cong")
+```
+
+```{r Running Jags for Incongruent, cache = TRUE}
+
+out.model1.IC <- run.jags(model = "Model_Followup_Cong", monitor = parameters_cong, data = DataList_IC, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter)
+
+out.m1.IC.mcmc <- as.mcmc.list(out.model1.IC)
+summary(out.model1.IC)
+autocorr.plot(out.model1.IC)
+```
+
+```{r Data list C}
+Alldata.C <- matrix(nrow = nrow(Alldata), ncol = ncol(Alldata))
+
+for(i in 1:nrow(Alldata)){
+  if(is.element(Alldata[i,4], c(1))){
+    Alldata.C[i,] <- Alldata[i,]
+  }
+}
+
+Alldata.C <- na.omit(Alldata.C)
+
+y <- as.numeric(Alldata.C[,2])
+pp <- as.numeric(Alldata.C[,1])
+Nratio <- as.numeric(Alldata.C[,5])
+CHratio <- as.numeric(Alldata.C[,7])
+Densityratio <- as.numeric(Alldata.C[,10])
+Surfaceratio <- as.numeric(Alldata.C[,11])
+Itemsizeratio <- as.numeric(Alldata.C[,8])
+Circumfrenceratio <- as.numeric(Alldata.C[,9])
+Congruence <- as.factor(Alldata.C[,4])
+
+DataList_C = list(
+  y = as.numeric(y),
+  pp = as.numeric(pp),
+  Nsub = 36,
+  Nratio = as.numeric(Nratio),
+  CHratio = as.numeric(CHratio),
+  Densityratio = as.numeric(Densityratio),
+  Surfaceratio = as.numeric(Surfaceratio),
+  Itemsizeratio = as.numeric(Itemsizeratio),
+  Circumfrenceratio = as.numeric(Circumfrenceratio),
+  Ntrial = nrow(Alldata.C)
+)
+```
+
+```{r Running Jags for Congruent, cache = TRUE}
+out.model1.C <- run.jags(model = "Model_Followup_Cong", monitor = parameters_cong, data = DataList_C, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter)
+
+summary(out.model1.C)
+
+```
+
+```{r Importing Original Data}
+setwd('C:/AA Uni Work/Stage/Followup/Original Data')
+
+nsub <- 36
+subject <- c()
+acc <- c()
+acc.t <- c()
+rt <- c()
+rt.t <- c()
+congruence <- c()
+congruence.t <- c()
+ratio <- c()
+ratio.t <- c()
+ImageIndex.t <- c()
+ImageIndex <- c()
+Alldata2 <- matrix(nrow = 1, ncol = 5)
+
+ph <- 1
+ph1 <- 1
+ph2 <- 1
+ph3 <- 1
+
+for(i in 1:nsub){
+  data.temp <- read.delim(file = paste('Dottask-',i,'.txt', sep = ""), sep = "\t", fileEncoding = "UTF-16LE", header = FALSE)
+  
+  for(j in 1: 151){
+  if(toString(data.temp$V60[j]) == "TrialDotProc"){
+    subject <- i
+    acc[ph] <- as.numeric(toString(data.temp$V29[j]))
+    ratio[ph1] <- toString(data.temp$V61[j])
+    congruence[ph2] <- toString(data.temp$V93[j])
+    ImageIndex[ph3] <- toString(data.temp$V63[j])
+    ph <- ph+1
+    ph1 <- ph1+1
+    ph2 <- ph2+1
+    ph3 <- ph3+1
+  }
+    
+  }
+ph <- 1
+ph1 <- 1
+ph2 <- 1
+ph3 <- 1
+  data.matrix <- matrix(nrow = length(congruence), ncol = 5)
+  data.matrix[,1] <- subject
+  data.matrix[,2] <- acc
+  data.matrix[,3] <- congruence
+  data.matrix[,4] <- ImageIndex
+  data.matrix[,5] <- ratio
+  Alldata2 <- rbind(Alldata2, data.matrix)
+}
+Alldata2 <- Alldata2[-c(1),]
+```
+```{r Recoding image index}
+for(i in 1:nrow(Alldata2)){
+  Alldata2[i,4] <- substr(Alldata2[i,4], 1, 3)
+  if(grepl( "_", Alldata2[i,4], fixed = TRUE) == TRUE){
+    Alldata2[i,4] <- substr(Alldata2[i,4], 1, 2)
+    if(grepl("_", Alldata2[i,4], fixed = TRUE) == TRUE){
+      Alldata2[i,4] <- substr(Alldata2[i,4],1,1)
+    }
+  }
+}
+
+```
+
+```{r Importing Ratio Data}
+setwd('C:/AA Uni Work/Stage/Followup/Original Data')
+
+data2 <- read.delim(file = 'Original_Ratios.csv', sep = ';', header = FALSE)
+data2 <- as.matrix(data2)
+data2[1,1] <- 70878
+
+for(i in 1:nrow(data2)){
+  if(grepl("E", data2[i,1], fixed = TRUE) == TRUE){
+    data2[i,1] <- sub("E", "e", data2[i,1], ignore.case = FALSE)
+    data2[i,1] <- sub(",",".", data2[i,1])
+  }
+}
+
+
+
+data2[,1:5] <- as.numeric(data2[,1:5])
+data2[1,3] <- 2548.6
+
+
+data2_backup <- data2
+data2 <- as.data.frame(data2)
+for(i in 1:ncol(data2)){
+  data2[,i] <- as.numeric(data2[,i])
+}
+```
+
+```{r Calculating ratio ranges }
+data2 <- cbind(data2, matrix( ncol = 5))
+
+ph <- 1
+
+
+for(i in 1:nrow(data2)){
+  if(ph == nrow(data2)){
+    i <- nrow(data2)
+  }
+  else{
+  data2[ph,7] <- as.numeric(data2[ph+1,1])/as.numeric(data2[ph,1])
+  data2[ph+1,7] <- data2[ph,7]
+  data2[ph,8] <- as.numeric(data2[ph+1,2])/as.numeric(data2[ph,2])
+  data2[ph+1,8] <- data2[ph,8]
+  data2[ph,9] <- as.numeric(data2[ph+1,3])/as.numeric(data2[ph,3])
+  data2[ph+1,9] <- data2[ph,9]
+  data2[ph,10] <- as.numeric(data2[ph+1,4])/as.numeric(data2[ph,4])
+  data2[ph+1,10] <- data2[ph,10]
+  data2[ph,11] <- as.numeric(data2[ph+1,5])/as.numeric(data2[ph,5])
+  data2[ph+1,11] <- data2[ph,11]
+  ph <- ph+2
+}
+}
+
+data2 <- data2[-c(289:nrow(data2)),]
+
+
+# Recoding inverse ratio's
+
+
+
+
+for( i in 1:nrow(data2)){
+  if(data2[i,7] < 1 ){
+    data2[i,7] <- 1/data2[i,7]
+  }
+  if(data2[i,8] < 1 ){
+    data2[i,8] <- 1/data2[i,8]
+  }
+  if(data2[i,9] < 1 ){
+    data2[i,9] <- 1/data2[i,9]
+  }
+  if(data2[i,10] < 1 ){
+    data2[i,10] <- 1/data2[i,10]
+  }
+  if(data2[i,11] < 1 ){
+    data2[i,11] <- 1/data2[i,11]
+  }
+}
+```
+```{r Making the Tables}
+# Has to be done
+```
+
+```{r FINALISING Alldata2}
+Alldata2 <- cbind(Alldata2, matrix(nrow = nrow(Alldata2), ncol = 5))
+Alldata2 <- as.data.frame(Alldata2)
+Alldata2$V4 <- as.numeric(Alldata2$V4)
+
+for(i in 1:nrow(Alldata2)){
+  for(j in 1:nrow(data2)){
+    if( Alldata2[i,4] == data2[j,6]){
+      Alldata2[i,6:10] <- as.matrix(data2[j,7:11])
+    }
+  }
+}
+
+## Recoding congruence
+
+for(i in 1:nrow(Alldata2)){
+  if(Alldata2[i,3] == "incongruent"){
+    Alldata2[i,3] <- 0
+  }
+  else{
+    Alldata2[i,3] <- 1
+  }
+}
+AAA <- Alldata2
+Alldata2 <- AAA
+for(i in 1:nrow(Alldata2)){
+  Alldata2[i,5] <- sub(",",".",Alldata2[i,5])
+}
+
+Alldata2[i,5] <- as.numeric(Alldata2[i,5])
+
+write.table(file = "Data Sample 2.csv", Alldata2, sep = ",")
+```
+```{r Data list sample 2 model}
+y <- as.numeric(Alldata2[,2])
+pp <- as.numeric(Alldata2[,1])
+Nratio <- as.numeric(Alldata2[,5])
+CHratio <- as.numeric(Alldata2[,6])
+Densityratio <- as.numeric(Alldata2[,9])
+Surfaceratio <- as.numeric(Alldata2[,10])
+Itemsizeratio <- as.numeric(Alldata2[,7])
+Circumfrenceratio <- as.numeric(Alldata2[,8])
+Congruence <- as.factor(Alldata2[,3])
+
+DataList_2 = list(
+  y = as.numeric(y),
+  pp = as.numeric(pp),
+  Nsub = 36,
+  Nratio = as.numeric(Nratio),
+  CHratio = as.numeric(CHratio),
+  Densityratio = as.numeric(Densityratio),
+  Surfaceratio = as.numeric(Surfaceratio),
+  Itemsizeratio = as.numeric(Itemsizeratio),
+  Circumfrenceratio = as.numeric(Circumfrenceratio),
+  Ntrial = nrow(Alldata.C),
+  Congruence = as.factor(Congruence)
+)
+```
+
+```{r Running jags for sample 2 model}
+out.model.2 <- run.jags(model = "Model_Followup", monitor = parameters, data = DataList_2, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter)
+
+summary(out.model.2)
+autocorr.plot(out.model.2)
+
+```
+```{r Ratio descriptives original data}
+data2w <- as.data.frame(data2)
+data2w <- data2w[,-c(1:5)]
+data2w <- cbind(data2w, matrix(ncol = 1))
+
+for(j in 1:nrow(data2w)){
+  for(i in 1:nrow(Alldata2)){
+   if(Alldata2$V4[i] == data2w$V6[j]){
+    data2w$`matrix(ncol = 1)`[j] <- Alldata2$V3[i]
+  }
+}
+}
+
+colnames(data2w) <- c("Pair number", "CH",  "Density", "Dot Surface Area", "Diameter", "Circumfrence of each dot", "Condition")
+
+data.fullcong2 <- split(data2w, data2w$Condition == 1)
+data.fullcong2 <- data.fullcong2[[2]]
+
+data.fullincong2 <- split(data2w, data2w$Condition == 0)
+data.fullincong2 <- data.fullincong2[[2]]
+
+
+Range.matrix.2 <- matrix(nrow = 6, ncol = 2)
+column.names <- c("Fully Congruent", "Fully Incongruent")
+row.names.n <- c("Number", "CH", "Density", "Dot Surface Area", "Diameter", "Circumfrence of all dots")
+rownames(Range.matrix.2) <- row.names.n
+colnames(Range.matrix.2) <- column.names
+
+
+fullist <- c('data.fullcong2', 'data.fullincong2')
+
+for(i in 1:2){
+  for(j in 1:5){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    Range.matrix.2[j+1,i] <- toString(range(Currenti[,j+1]))
+  }
+}
+
+for(i in 1:2){
+    Currenti <- eval(parse(text = paste(fullist[i])))
+    Range.matrix[1,i] <- toString(range(Currenti[,3]))
+
+}
+
+
+```
+
