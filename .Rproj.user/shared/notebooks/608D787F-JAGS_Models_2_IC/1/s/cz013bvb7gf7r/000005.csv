@@ -1,0 +1,5 @@
+"0","write.table(summary(out.model.2.IC), file = ""parameters_model_2_IC.csv"", sep = ',')"
+"0","write.table(effectiveSize(out.model.2.IC), file = ""ESS_model_2_IC.csv"", sep = ',')"
+"2","Combining the 2 mcmc chains together"
+"0","mcmc.ic <- as.mcmc.list(out.model.2.IC)"
+"0","pdf('traceplot_model_2_IC.pdf')"

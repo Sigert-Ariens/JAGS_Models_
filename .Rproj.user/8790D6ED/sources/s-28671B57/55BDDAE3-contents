@@ -39,16 +39,16 @@ colnames(data.ic) <- varnames
 
 ```{r Data List JAGS}
 DataList.1.IC = list(
-  y = data.c$Acc,
-  pp = data.c$Subject,
+  y = data.ic$Acc,
+  pp = data.ic$Subject,
   Nsub = 36,
-  Nratio = data.c$Nratio,
-  CHratio = data.c$CHratio,
-  Densityratio = data.c$Densityratio,
-  Surfaceratio = data.c$Surfaceratio,
-  Itemsizeratio = data.c$ItemSizeRatio,
-  Circumfrenceratio = data.c$CircumfrenceRatio,
-  Ntrial = nrow(data.c)
+  Nratio = data.ic$Nratio,
+  CHratio = data.ic$CHratio,
+  Densityratio = data.ic$Densityratio,
+  Surfaceratio = data.ic$Surfaceratio,
+  Itemsizeratio = data.ic$ItemSizeRatio,
+  Circumfrenceratio = data.ic$CircumfrenceRatio,
+  Ntrial = nrow(data.ic)
 )
 
 ```
@@ -56,7 +56,7 @@ DataList.1.IC = list(
 nchains = 2
 nadapt = 1000 #many uninformative dispersion parameters
 nburn = 1000
-niter = 10000
+niter = 500000
 myinits <- NULL
 ```
 ```{r JAGS model specification}
@@ -105,7 +105,6 @@ out.model.1.IC <- run.jags(model = "Model_1_IC", monitor = parameters, data = Da
 autocorr.plot(as.mcmc.list(out.model.1.IC), xlim = c(0,100))
 write.table(summary(out.model.1.IC), file = "parameters_model_1_IC.csv", sep = ',')
 write.table(effectiveSize(out.model.1.IC), file = "ESS_model_1_IC.csv", sep = ',')
-
 mcmc.ic <- as.mcmc.list(out.model.1.IC)
 pdf('traceplot_model_1_IC.pdf')
 traceplot(mcmc.ic) 

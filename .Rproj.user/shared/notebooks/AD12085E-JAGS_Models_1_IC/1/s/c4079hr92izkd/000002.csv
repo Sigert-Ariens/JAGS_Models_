@@ -1,0 +1,3 @@
+"0","data <- read.delim(file = 'First Sample Data.csv', sep = "","", header = TRUE)"
+"0","varnames <- c(""Subject"", ""Acc"", ""RT"", ""Congruence"", ""Nratio"", ""ImageIndex"", ""CHratio"", ""ItemSizeRatio"", ""CircumfrenceRatio"", ""Densityratio"", ""Surfaceratio"")"
+"0","colnames(data) <- varnames"
