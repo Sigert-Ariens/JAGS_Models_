@@ -1,5 +1,5 @@
 ---
-title: "JAGS_Models_2_IC"
+title: "JAGS_Models_2_C"
 author: "Sigert Ariens"
 date: "17 december 2018"
 output: html_document
@@ -11,6 +11,7 @@ new.packages <- list.of.packages[!(list.of.packages %in%installed.packages()[,"P
 if(length(new.packages)){install.packages(new.packages,repos = "http://cran.us.r-project.org")}
 lapply(list.of.packages, require, character.only = TRUE)
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 ```{r Importing Data}
@@ -19,33 +20,32 @@ varnames <- c("Subject", "Acc", "Congruence", "ImageIndex","Nratio", "CHratio", 
 colnames(data) <- varnames
 ```
 
-
 ```{r Data congruence}
-data.ic <- matrix(nrow = nrow(data), ncol = ncol(data))
+data.c <- matrix(nrow = nrow(data), ncol = ncol(data))
 
-for(i in 1:nrow(data.ic)){
-  if(is.element(data$Congruence[i], c(0)) == TRUE){
-    data.ic[i,] <- as.matrix(data[i,])
+for(i in 1:nrow(data.c)){
+  if(is.element(data$Congruence[i], c(1)) == TRUE){
+    data.c[i,] <- as.matrix(data[i,])
   }
 }
 
-data.ic <- na.omit(data.ic)
-data.ic <- as.data.frame(data.ic)
-colnames(data.ic) <- varnames
+data.c <- na.omit(data.c)
+data.c <- as.data.frame(data.c)
+colnames(data.c) <- varnames
 ```
 
 ```{r Data List 2 C}
-DataList.2.IC = list(
-  y = data.ic$Acc,
-  pp = data.ic$Subject,
+DataList.2.C = list(
+  y = data.c$Acc,
+  pp = data.c$Subject,
   Nsub = 36,
-  Nratio = data.ic$Nratio,
-  CHratio = data.ic$CHratio,
-  Densityratio = data.ic$Densityratio,
-  Surfaceratio = data.ic$Surfaceratio,
-  Itemsizeratio = data.ic$ItemSizeRatio,
-  Circumfrenceratio = data.ic$CircumfrenceRatio,
-  Ntrial = nrow(data.ic)
+  Nratio = data.c$Nratio,
+  CHratio = data.c$CHratio,
+  Densityratio = data.c$Densityratio,
+  Surfaceratio = data.c$Surfaceratio,
+  Itemsizeratio = data.c$ItemSizeRatio,
+  Circumfrenceratio = data.c$CircumfrenceRatio,
+  Ntrial = nrow(data.c)
 )
 
 ```
@@ -54,7 +54,7 @@ DataList.2.IC = list(
 nchains = 2
 nadapt = 1000 #many uninformative dispersion parameters
 nburn = 1000
-niter = 1000
+niter = 600000
 myinits <- NULL
 ```
 
@@ -92,20 +92,22 @@ betaCircumfrence ~ dnorm(0, 1/sigma^2)
 sigma ~ dunif( 1.0E-3 , 1.0E+3 )
 }
 "
-writeLines(ModelString , con="Model_2_IC")
+writeLines(ModelString , con="Model_2_C")
 ```
 
 ```{r Running JAGS}
 
 parameters<- c("betaN", "betaCH","betaDensity", "betaSurface", "betaItemsize", "betaCircumfrence")
 
-out.model.2.IC <- run.jags(model = "Model_2_IC", monitor = parameters, data = DataList.2.IC, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter,method = "parallel")#, thin = 1)
+out.model.2.C <- run.jags(model = "Model_2_C", monitor = parameters, data = DataList.2.C, n.chains = nchains, adapt = nadapt, burnin = nburn, sample = niter,method = "parallel")#, thin = 1)
 
-autocorr.plot(as.mcmc.list(out.model.2.IC), xlim = c(0,100))
-write.table(summary(out.model.2.IC), file = "parameters_model_2_IC.csv", sep = ',')
-write.table(effectiveSize(out.model.2.IC), file = "ESS_model_2_IC.csv", sep = ',')
-mcmc.ic <- as.mcmc.list(out.model.2.IC)
-pdf('traceplot_model_2_IC.pdf')
-traceplot(mcmc.ic) 
+autocorr.plot(as.mcmc.list(out.model.2.C), xlim = c(0,100))
+write.table(summary(out.model.2.C), file = "parameters_model_2_C.csv", sep = ',')
+write.table(effectiveSize(out.model.2.C), file = "ESS_model_2_C.csv", sep = ',')
+mcmc.c <- as.mcmc.list(out.model.2.C)
+pdf('traceplot_model_2_C.pdf')
+traceplot(mcmc.c) 
 dev.off()
 ```
+
+

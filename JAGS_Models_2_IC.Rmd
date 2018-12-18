@@ -54,7 +54,7 @@ DataList.2.IC = list(
 nchains = 2
 nadapt = 1000 #many uninformative dispersion parameters
 nburn = 1000
-niter = 1000
+niter = 600000
 myinits <- NULL
 ```
 

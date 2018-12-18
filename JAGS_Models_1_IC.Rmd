@@ -56,7 +56,7 @@ DataList.1.IC = list(
 nchains = 2
 nadapt = 1000 #many uninformative dispersion parameters
 nburn = 1000
-niter = 500000
+niter = 600000
 myinits <- NULL
 ```
 ```{r JAGS model specification}
